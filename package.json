@@ -1,0 +1,24 @@
+{
+  "name": "gestionale-ore-helper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Helper macOS per registrare le ore su GestionaleOre.it",
+  "bin": {
+    "gestionale-ore": "./src/cli.mjs"
+  },
+  "scripts": {
+    "setup": "node src/cli.mjs setup",
+    "login": "node src/cli.mjs login",
+    "prompt": "node src/cli.mjs prompt",
+    "dry-run": "node src/cli.mjs prompt --dry-run",
+    "doctor": "node src/cli.mjs doctor",
+    "backfill:august": "node src/cli.mjs backfill-august --year=2026",
+    "install-agent": "node src/cli.mjs install-agent",
+    "uninstall-agent": "node src/cli.mjs uninstall-agent",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
