@@ -1,85 +1,173 @@
-# Gestionale Ore Helper
+# gestionaleore-mac-helper
 
-MVP macOS che, dal lunedì al venerdì alle 10:00, 12:00, 14:00, 16:00 e 18:00:
+Helper non ufficiale per macOS che rende più semplice registrare le ore su [GestionaleOre.it](https://www.gestionaleore.it/).
 
-1. chiede su quale cliente/commessa hai lavorato;
-2. chiede una breve descrizione e la durata;
-3. mostra un riepilogo da confermare;
-4. registra l'intervallo su GestionaleOre.it.
+Durante la giornata apre un dialog nativo ogni due ore, chiede su quale cliente o commessa hai lavorato, raccoglie descrizione e durata e mostra un riepilogo prima dell'invio. Nessuna ora viene registrata senza una conferma esplicita.
 
-Il JWT è salvato nel Portachiavi macOS; la password viene usata soltanto durante il setup e non viene conservata. Nel file di configurazione restano gli ID tecnici di utente, cliente, commessa e attività. L'helper impedisce inoltre il reinvio immediato dello stesso intervallo.
+## Funzionalità
 
-## Avvio
+- dialog nativi macOS, senza interfacce da lasciare aperte;
+- selezione multipla dei clienti durante il setup;
+- preset per cliente, commessa, sotto-commessa e attività, secondo la configurazione aziendale;
+- promemoria feriali tramite LaunchAgent macOS;
+- simulazione completa prima dell'invio;
+- protezione dal reinvio immediato dello stesso intervallo;
+- supporto al login con autenticazione a due fattori;
+- JWT conservato nel Portachiavi macOS, non nei file del progetto.
 
-Serve Node.js 20 o successivo. Da questa cartella:
+## Requisiti
+
+- macOS;
+- Node.js 20 o successivo;
+- un account valido su GestionaleOre.it;
+- accesso alla rete per comunicare con `api.gestionaleore.it`.
+
+## Avvio rapido
 
 ```bash
+git clone https://github.com/danyeah/gestionaleore-mac-helper.git
+cd gestionaleore-mac-helper
 npm run setup
 npm run dry-run
 npm run doctor
 npm run install-agent
 ```
 
-Quando il JWT scade, puoi rinnovarlo senza riconfigurare i preset:
+`npm run setup` effettua il login, rileva l'utente e le impostazioni aziendali e mostra gli elementi disponibili. Se l'account usa la modalità cliente, puoi selezionare più clienti contemporaneamente:
+
+- `⌘-clic` seleziona o deseleziona singole voci;
+- `Maiusc-clic` seleziona un intervallo continuo.
+
+Ogni cliente selezionato diventa un preset. I preset già presenti vengono mantenuti, quindi puoi ripetere il setup in seguito senza perdere la configurazione.
+
+La password viene usata soltanto per effettuare il login e non viene salvata. Se è attiva la 2FA, il setup richiede anche il codice di verifica.
+
+## Utilizzo quotidiano
+
+Per aprire immediatamente il dialog e registrare un'attività:
 
 ```bash
-npm run login
+npm run prompt
 ```
 
-`setup` effettua il login, rileva l'utente e le impostazioni aziendali, quindi fa scegliere cliente/commessa/attività disponibili. In modalità cliente puoi selezionare più voci nella stessa finestra con `⌘-clic` (oppure `Maiusc-clic` per un intervallo); ogni cliente diventa un preset. I preset già configurati restano salvati.
+Il flusso chiede:
 
-`dry-run` apre tutti i dialog ma non invia nulla. È il passaggio consigliato prima di attivare la pianificazione.
+1. cliente o commessa;
+2. breve descrizione del lavoro;
+3. durata da registrare;
+4. conferma finale del riepilogo.
 
-`install-agent` attiva i prompt feriali. Per disattivarli:
+Per provare lo stesso flusso senza inviare dati:
+
+```bash
+npm run dry-run
+```
+
+## Comandi
+
+| Comando | Descrizione |
+| --- | --- |
+| `npm run setup` | Configura l'account e uno o più preset |
+| `npm run login` | Rinnova il JWT senza riconfigurare i preset |
+| `npm run prompt` | Apre il dialog e registra le ore dopo la conferma |
+| `npm run dry-run` | Simula il flusso senza inviare dati |
+| `npm run doctor` | Verifica sessione, collegamento e configurazione |
+| `npm run install-agent` | Attiva i promemoria feriali automatici |
+| `npm run uninstall-agent` | Disattiva i promemoria automatici |
+| `npm run backfill:august` | Simula il backfill preconfigurato di agosto 2026 |
+| `npm test` | Esegue la suite di test |
+
+## Promemoria automatici
+
+`npm run install-agent` installa un LaunchAgent per l'utente corrente. Per impostazione predefinita il prompt appare dal lunedì al venerdì alle 10:00, 12:00, 14:00, 16:00 e 18:00.
+
+Per disattivarlo:
 
 ```bash
 npm run uninstall-agent
 ```
 
-## Backfill agosto 2026
+## Configurazione
 
-Il comando seguente prepara il piano, risolve automaticamente i clienti e controlla le ore già presenti. Non invia nulla:
-
-```bash
-npm run backfill:august
-```
-
-Il piano copre tutti i 21 giorni feriali con 8 ore al giorno: 64h CSA/Football Exchange, 20h Tobetok, 10h Certyclick, 10h Martino Parisi e 64h EnerCoin. Usa giornate intere, tranne il 19 agosto, diviso in 4h Tobetok, 2h Certyclick e 2h Martino Parisi.
-
-Se la simulazione non mostra conflitti, l'invio reale richiede sia `--apply` sia una conferma testuale intenzionale:
-
-```bash
-node src/cli.mjs backfill-august --year=2026 --apply --confirm=AGOSTO-2026
-```
-
-Prima dell'invio appare comunque un ultimo riepilogo macOS. Le registrazioni già presenti e perfettamente identiche vengono saltate, così un'esecuzione interrotta può essere ripresa. Qualsiasi altra voce esistente in una data del piano blocca l'intero backfill.
-
-## Personalizzazione
-
-La configurazione viene creata in:
+La configurazione locale viene salvata fuori dal repository:
 
 ```text
 ~/.config/gestionale-ore-helper/config.json
 ```
 
-Puoi modificare `promptHours`, `workdays`, `intervalMinutes` e i nomi dei preset. Gli orari pianificati vengono riletti quando esegui di nuovo `npm run install-agent`.
+Le opzioni principali sono:
 
-## Endpoint ricostruiti
+- `promptHours`: ore del giorno in cui mostrare il dialog;
+- `workdays`: giorni della settimana attivi, con `1` per lunedì e `5` per venerdì;
+- `intervalMinutes`: durata proposta dal prompt;
+- `presets`: clienti, commesse e attività configurati.
 
-- `POST /auth/signin` — login e JWT
-- `POST /auth/verify-2fa` — verifica 2FA
-- `POST /auth/check-jwt` — utente e impostazioni
-- `GET /customers/select` — clienti
-- `GET /projects/assigned` — commesse assegnate
-- `GET /projects/assigned/:id` — sotto-commesse
-- `GET /activities/select` — attività
-- `POST /hours` — inserimento ore
+Dopo aver modificato gli orari, esegui nuovamente `npm run install-agent` per aggiornare il LaunchAgent.
 
-Il payload di inserimento segue il modulo web: `userId`, `customerId`/`projectId`/`subProjectId`, `activityId` oppure `activityFreeText`, `day`, `start`, `end`, `pause`, `qty`, `note`, `billingStatus`, `overtime` e `approved`.
+## Sessione e sicurezza
 
-## Limiti dell'MVP
+- Il JWT viene salvato nel Portachiavi macOS con il servizio `it.scalingparrots.gestionale-ore-helper.token`.
+- La password non viene scritta su disco.
+- Il file di configurazione contiene identificativi tecnici e viene creato con permessi limitati all'utente.
+- La simulazione non effettua chiamate di scrittura.
+- Ogni registrazione interattiva richiede una conferma finale.
 
-- È pensato per macOS e usa dialog nativi, Portachiavi e LaunchAgent.
-- Non registra nulla senza conferma esplicita nel riepilogo.
-- Se il JWT scade, esegui `npm run login`; anche l'eventuale 2FA viene gestito lì.
-- Gli endpoint non sono documentati pubblicamente: dopo un aggiornamento importante del gestionale può essere necessario adeguare il client.
+Quando la sessione scade, rinnovala senza perdere i preset:
+
+```bash
+npm run login
+```
+
+## Backfill di agosto 2026
+
+Il repository include una procedura una tantum, costruita per uno specifico piano di agosto 2026. Il piano copre 21 giorni feriali e 168 ore complessive, distribuite tra CSA/Football Exchange, Tobetok, Certyclick, Martino Parisi ed EnerCoin.
+
+La simulazione risolve i clienti, legge le ore già presenti e non scrive nulla:
+
+```bash
+npm run backfill:august
+```
+
+L'invio reale richiede intenzionalmente sia `--apply` sia una frase di conferma:
+
+```bash
+node src/cli.mjs backfill-august --year=2026 --apply --confirm=AGOSTO-2026
+```
+
+Prima dell'invio viene mostrato un ulteriore riepilogo macOS. Le registrazioni identiche già presenti vengono saltate; qualsiasi voce diversa nelle date coinvolte blocca il backfill. Controlla sempre la simulazione prima di usare `--apply`.
+
+## Integrazione con GestionaleOre.it
+
+GestionaleOre.it non espone attualmente API pubbliche documentate per questo flusso. L'helper usa gli endpoint osservati nell'applicazione web:
+
+- `POST /auth/signin`
+- `POST /auth/verify-2fa`
+- `POST /auth/check-jwt`
+- `GET /customers/select`
+- `GET /projects/assigned`
+- `GET /projects/assigned/:id`
+- `GET /activities/select`
+- `GET /hours`
+- `POST /hours`
+
+Il client invia gli stessi campi principali del modulo web, inclusi utente, cliente o commessa, data, intervallo, pausa, quantità, descrizione e stato di fatturazione.
+
+## Sviluppo
+
+Il progetto non richiede dipendenze runtime esterne. Per verificare le modifiche:
+
+```bash
+npm test
+node --check src/cli.mjs
+node --check src/macos.mjs
+```
+
+Issue e pull request sono benvenute. Non includere nei ticket password, JWT, file di configurazione personali o payload contenenti dati riservati.
+
+## Limiti e avvertenze
+
+- Il progetto è pensato esclusivamente per macOS.
+- È un helper non ufficiale e non è affiliato a GestionaleOre.it.
+- Gli endpoint utilizzati non sono documentati pubblicamente e potrebbero cambiare.
+- Verifica che l'automazione sia consentita dalle policy della tua organizzazione e dai termini del servizio.
+- Il backfill incluso è specifico: non usarlo per mesi o account diversi senza averne controllato il piano nel codice.
